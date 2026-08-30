@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bildergalerie</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d0d0d;
+    --bg2:#161616;
+    --panel:#1c1c1c;
+    --gold:#d4af37;
+    --gold-dim:#8a712c;
+    --text:#e8e6e1;
+    --text-dim:#9a968c;
+    --border:#2c2a24;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Barlow',sans-serif;
+    overflow-x:hidden;
+  }
+  h1,h2,.brand{
+    font-family:'Bebas Neue',sans-serif;
+    letter-spacing:1px;
+  }
+  header{
+    padding:26px 32px 18px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:16px;
+  }
+  header h1{
+    font-size:2.4rem;
+    color:var(--gold);
+    margin:0;
+  }
+  header h1 span{color:var(--text);}
+  .toolbar{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  button{
+    font-family:'Barlow',sans-serif;
+    font-weight:600;
+    letter-spacing:.4px;
+    border-radius:8px;
+    border:1px solid var(--gold-dim);
+    background:var(--panel);
+    color:var(--gold);
+    padding:11px 18px;
+    cursor:pointer;
+    transition:.18s ease;
+    font-size:.92rem;
+  }
+  button:hover{
+    background:var(--gold);
+    color:#161310;
+    box-shadow:0 0 14px rgba(212,175,55,.35);
+  }
+  button.primary{
+    background:var(--gold);
+    color:#161310;
+  }
+  button.primary:hover{
+    background:#e8c65a;
+  }
+  button:disabled{
+    opacity:.35;
+    cursor:not-allowed;
+    box-shadow:none;
+  }
+  button:disabled:hover{
+    background:var(--panel);
+    color:var(--gold);
+  }
+  input[type=file]{display:none;}
+
+  main{padding:28px 32px 60px;}
+
+  #dropzone{
+    border:2px dashed var(--border);
+    border-radius:16px;
+    padding:60px 24px;
+    text-align:center;
+    color:var(--text-dim);
+    transition:.2s;
+    cursor:pointer;
+  }
+  #dropzone.drag{
+    border-color:var(--gold);
+    background:rgba(212,175,55,.06);
+    color:var(--gold);
+  }
+  #dropzone .big{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:1.6rem;
+    color:var(--text);
+    letter-spacing:1px;
+    display:block;
+    margin-bottom:6px;
+  }
+
+  #gallery{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
+    gap:18px;
+    margin-top:26px;
+  }
+  .card{
+    position:relative;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    overflow:hidden;
+    cursor:pointer;
+    transition:.2s;
+  }
+  .card:hover{
+    border-color:var(--gold-dim);
+    transform:translateY(-3px);
+    box-shadow:0 8px 22px rgba(0,0,0,.5);
+  }
+  .card img{
+    width:100%;
+    height:150px;
+    object-fit:cover;
+    display:block;
+    filter:var(--card-filter,none);
+  }
+  .card .meta{
+    padding:8px 10px;
+    font-size:.78rem;
+    color:var(--text-dim);
+    display:flex;
+    justify-content:space-between;
+    gap:6px;
+  }
+  .card .meta span:first-child{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .card .del{
+    position:absolute;
+    top:6px;right:6px;
+    width:26px;height:26px;
+    border-radius:50%;
+    background:rgba(10,10,10,.7);
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    display:flex;align-items:center;justify-content:center;
+    font-size:.9rem;
+    padding:0;
+  }
+  .card .del:hover{
+    background:#c0392b;
+    color:#fff;
+    border-color:#c0392b;
+  }
+
+  #empty-hint{
+    text-align:center;
+    color:var(--text-dim);
+    margin-top:60px;
+    font-size:.95rem;
+  }
+
+  /* Viewer */
+  #viewer{
+    position:fixed;inset:0;
+    background:#000;
+    display:none;
+    z-index:100;
+    flex-direction:column;
+  }
+  #viewer.open{display:flex;}
+  #viewer-stage{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    overflow:hidden;
+    background:
+      linear-gradient(#0a0a0a,#0a0a0a);
+  }
+  #viewer-canvas-wrap{
+    max-width:96%;
+    max-height:96%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  #viewer img{
+    max-width:100%;
+    max-height:82vh;
+    object-fit:contain;
+    display:block;
+    box-shadow:0 10px 50px rgba(0,0,0,.7);
+    filter:var(--live-filter, none);
+  }
+  #viewer-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:14px 22px;
+    background:linear-gradient(180deg,rgba(0,0,0,.85),transparent);
+    position:absolute;
+    top:0;left:0;right:0;
+    z-index:5;
+  }
+  #viewer-top .fname{
+    color:var(--text-dim);
+    font-size:.85rem;
+  }
+  #viewer-bottom{
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    padding:16px;
+    background:linear-gradient(0deg,rgba(0,0,0,.85),transparent);
+    flex-wrap:wrap;
+  }
+  .nav-arrow{
+    position:absolute;
+    top:50%;
+    transform:translateY(-50%);
+    background:rgba(20,20,20,.55);
+    border:1px solid var(--border);
+    color:var(--gold);
+    width:48px;height:48px;
+    border-radius:50%;
+    font-size:1.3rem;
+    display:flex;align-items:center;justify-content:center;
+    z-index:5;
+  }
+  .nav-arrow:hover{background:var(--gold);color:#161310;}
+  #nav-prev{left:18px;}
+  #nav-next{right:18px;}
+
+  /* Style panel */
+  #style-panel{
+    position:absolute;
+    top:64px;right:22px;
+    width:270px;
+    background:var(--panel);
+    border:1px solid var(--gold-dim);
+    border-radius:12px;
+    padding:18px;
+    display:none;
+    z-index:6;
+    box-shadow:0 10px 40px rgba(0,0,0,.6);
+  }
+  #style-panel.open{display:block;}
+  #style-panel h2{
+    font-size:1.3rem;
+    color:var(--gold);
+    margin:0 0 12px;
+  }
+  .slider-row{
+    margin-bottom:14px;
+  }
+  .slider-row label{
+    display:flex;
+    justify-content:space-between;
+    font-size:.82rem;
+    color:var(--text-dim);
+    margin-bottom:5px;
+  }
+  .slider-row input[type=range]{
+    width:100%;
+    accent-color:var(--gold);
+  }
+  .preset-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-top:10px;
+  }
+  .preset-row button{
+    flex:1 1 auto;
+    padding:7px 10px;
+    font-size:.76rem;
+  }
+  #style-panel .reset-btn{
+    width:100%;
+    margin-top:12px;
+  }
+
+  ::-webkit-scrollbar{width:10px;}
+  ::-webkit-scrollbar-track{background:var(--bg);}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:6px;}
+
+  .counter{
+    color:var(--text-dim);
+    font-size:.85rem;
+    align-self:center;
+  }
+
+  @media(max-width:640px){
+    header{padding:18px;}
+    main{padding:18px;}
+    header h1{font-size:1.9rem;}
+    #style-panel{right:10px;left:10px;width:auto;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Bilder<span>galerie</span></h1>
+  <div class="toolbar">
+    <button id="btn-add" class="primary">+ Bilder laden</button>
+    <label for="all-maxwidth" style="align-self:center;color:var(--text-dim);font-size:.82rem;">Max. Breite (px):</label>
+    <input type="number" id="all-maxwidth" min="1" step="1" placeholder="Original" style="width:100px;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font-family:'Barlow',sans-serif;">
+    <button id="btn-download-all" disabled>Alle als JPG speichern</button>
+    <button id="btn-clear" disabled>Galerie leeren</button>
+  </div>
+</header>
+
+<main>
+  <div id="dropzone">
+    <span class="big">Bilder hierher ziehen</span>
+    oder klicken, um Dateien auszuwählen (mehrere möglich)
+  </div>
+
+  <div id="gallery"></div>
+  <div id="empty-hint">Noch keine Bilder geladen.</div>
+</main>
+
+<input type="file" id="file-input" accept="image/*" multiple>
+
+<!-- Vollbild-Viewer -->
+<div id="viewer">
+  <div id="viewer-top">
+    <span class="fname" id="viewer-fname"></span>
+    <span class="counter" id="viewer-counter"></span>
+    <button id="btn-close">✕ Schließen</button>
+  </div>
+
+  <div id="viewer-stage">
+    <button class="nav-arrow" id="nav-prev">‹</button>
+    <div id="viewer-canvas-wrap">
+      <img id="viewer-img" src="" alt="">
+    </div>
+    <button class="nav-arrow" id="nav-next">›</button>
+
+    <div id="style-panel">
+      <h2>Style</h2>
+      <div class="slider-row">
+        <label><span>Helligkeit</span><span id="v-bright">100%</span></label>
+        <input type="range" id="s-bright" min="0" max="200" value="100">
+      </div>
+      <div class="slider-row">
+        <label><span>Kontrast</span><span id="v-contrast">100%</span></label>
+        <input type="range" id="s-contrast" min="0" max="200" value="100">
+      </div>
+      <div class="slider-row">
+        <label><span>Sättigung</span><span id="v-sat">100%</span></label>
+        <input type="range" id="s-sat" min="0" max="200" value="100">
+      </div>
+      <div class="slider-row">
+        <label><span>Graustufen</span><span id="v-gray">0%</span></label>
+        <input type="range" id="s-gray" min="0" max="100" value="0">
+      </div>
+      <div class="slider-row">
+        <label><span>Sepia</span><span id="v-sepia">0%</span></label>
+        <input type="range" id="s-sepia" min="0" max="100" value="0">
+      </div>
+      <div class="slider-row">
+        <label><span>Weichzeichner</span><span id="v-blur">0px</span></label>
+        <input type="range" id="s-blur" min="0" max="10" value="0">
+      </div>
+      <div class="slider-row">
+        <label for="s-maxwidth">Max. Breite beim Speichern (px, leer = Original)</label>
+        <input type="number" id="s-maxwidth" min="1" step="1" placeholder="Original" style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 8px;font-family:'Barlow',sans-serif;">
+      </div>
+      <div class="preset-row">
+        <button data-preset="none">Original</button>
+        <button data-preset="bw">S/W</button>
+        <button data-preset="vintage">Vintage</button>
+        <button data-preset="cool">Kühl</button>
+        <button data-preset="warm">Warm</button>
+        <button data-preset="vivid">Kräftig</button>
+      </div>
+      <button class="reset-btn" id="btn-reset-style">Zurücksetzen</button>
+    </div>
+  </div>
+
+  <div id="viewer-bottom">
+    <button id="btn-fullscreen">⛶ Vollbild</button>
+    <button id="btn-style-toggle">🎨 Style</button>
+    <button id="btn-save-jpg" class="primary">⬇ Als JPG speichern</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const gallery = document.getElementById('gallery');
+  const emptyHint = document.getElementById('empty-hint');
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file-input');
+  const btnAdd = document.getElementById('btn-add');
+  const btnClear = document.getElementById('btn-clear');
+  const btnDownloadAll = document.getElementById('btn-download-all');
+
+  const viewer = document.getElementById('viewer');
+  const viewerImg = document.getElementById('viewer-img');
+  const viewerFname = document.getElementById('viewer-fname');
+  const viewerCounter = document.getElementById('viewer-counter');
+  const btnClose = document.getElementById('btn-close');
+  const navPrev = document.getElementById('nav-prev');
+  const navNext = document.getElementById('nav-next');
+  const btnFullscreen = document.getElementById('btn-fullscreen');
+  const btnStyleToggle = document.getElementById('btn-style-toggle');
+  const stylePanel = document.getElementById('style-panel');
+  const btnSaveJpg = document.getElementById('btn-save-jpg');
+  const btnResetStyle = document.getElementById('btn-reset-style');
+
+  let images = []; // {id, name, src}
+  let currentIndex = -1;
+
+  const defaultStyle = { bright:100, contrast:100, sat:100, gray:0, sepia:0, blur:0 };
+  let currentStyle = { ...defaultStyle };
+  const styleById = {}; // per-image saved style
+
+  function uid(){ return 'img_' + Math.random().toString(36).slice(2,10); }
+
+  function filterCss(st){
+    return `brightness(${st.bright}%) contrast(${st.contrast}%) saturate(${st.sat}%) grayscale(${st.gray}%) sepia(${st.sepia}%) blur(${st.blur}px)`;
+  }
+
+  function updateButtons(){
+    const has = images.length > 0;
+    btnDownloadAll.disabled = !has;
+    btnClear.disabled = !has;
+    emptyHint.style.display = has ? 'none' : 'block';
+  }
+
+  function addFiles(fileList){
+    const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const item = { id: uid(), name: file.name, src: e.target.result };
+        images.push(item);
+        styleById[item.id] = { ...defaultStyle };
+        renderCard(item);
+        updateButtons();
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function renderCard(item){
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.id = item.id;
+    card.innerHTML = `
+      <button class="del" title="Entfernen">✕</button>
+      <img src="${item.src}" alt="${item.name}">
+      <div class="meta"><span>${item.name}</span></div>
+    `;
+    card.querySelector('img').style.setProperty('--card-filter', filterCss(styleById[item.id]));
+    card.addEventListener('click', (e) => {
+      if(e.target.closest('.del')) return;
+      openViewer(images.findIndex(i => i.id === item.id));
+    });
+    card.querySelector('.del').addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeImage(item.id);
+    });
+    gallery.appendChild(card);
+  }
+
+  function removeImage(id){
+    images = images.filter(i => i.id !== id);
+    delete styleById[id];
+    const card = gallery.querySelector(`.card[data-id="${id}"]`);
+    if(card) card.remove();
+    updateButtons();
+  }
+
+  btnAdd.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => { addFiles(e.target.files); fileInput.value=''; });
+
+  ['dragenter','dragover'].forEach(ev => dropzone.addEventListener(ev, e => {
+    e.preventDefault(); dropzone.classList.add('drag');
+  }));
+  ['dragleave','drop'].forEach(ev => dropzone.addEventListener(ev, e => {
+    e.preventDefault(); dropzone.classList.remove('drag');
+  }));
+  dropzone.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+
+  btnClear.addEventListener('click', () => {
+    if(!confirm('Wirklich alle Bilder aus der Galerie entfernen?')) return;
+    images = [];
+    Object.keys(styleById).forEach(k => delete styleById[k]);
+    gallery.innerHTML = '';
+    updateButtons();
+  });
+
+  // ---- Viewer ----
+  function openViewer(index){
+    if(index < 0 || index >= images.length) return;
+    currentIndex = index;
+    const item = images[currentIndex];
+    currentStyle = { ...styleById[item.id] };
+    syncSlidersFromStyle();
+    applyLiveFilter();
+    viewerImg.src = item.src;
+    viewerFname.textContent = item.name;
+    viewerCounter.textContent = `${currentIndex+1} / ${images.length}`;
+    viewer.classList.add('open');
+  }
+
+  function closeViewer(){
+    if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+    viewer.classList.remove('open');
+    stylePanel.classList.remove('open');
+  }
+
+  function navigate(delta){
+    if(images.length === 0) return;
+    let next = currentIndex + delta;
+    if(next < 0) next = images.length - 1;
+    if(next >= images.length) next = 0;
+    openViewer(next);
+  }
+
+  btnClose.addEventListener('click', closeViewer);
+  navPrev.addEventListener('click', () => navigate(-1));
+  navNext.addEventListener('click', () => navigate(1));
+
+  document.addEventListener('keydown', e => {
+    if(!viewer.classList.contains('open')) return;
+    if(e.key === 'Escape') closeViewer();
+    if(e.key === 'ArrowLeft') navigate(-1);
+    if(e.key === 'ArrowRight') navigate(1);
+  });
+
+  btnFullscreen.addEventListener('click', () => {
+    if(!document.fullscreenElement){
+      viewer.requestFullscreen().catch(()=>{});
+    } else {
+      document.exitFullscreen().catch(()=>{});
+    }
+  });
+
+  // ---- Style panel ----
+  btnStyleToggle.addEventListener('click', () => stylePanel.classList.toggle('open'));
+
+  const sliders = {
+    bright: document.getElementById('s-bright'),
+    contrast: document.getElementById('s-contrast'),
+    sat: document.getElementById('s-sat'),
+    gray: document.getElementById('s-gray'),
+    sepia: document.getElementById('s-sepia'),
+    blur: document.getElementById('s-blur'),
+  };
+  const valLabels = {
+    bright: document.getElementById('v-bright'),
+    contrast: document.getElementById('v-contrast'),
+    sat: document.getElementById('v-sat'),
+    gray: document.getElementById('v-gray'),
+    sepia: document.getElementById('v-sepia'),
+    blur: document.getElementById('v-blur'),
+  };
+
+  function syncSlidersFromStyle(){
+    Object.keys(sliders).forEach(k => {
+      sliders[k].value = currentStyle[k];
+      valLabels[k].textContent = (k === 'blur') ? currentStyle[k] + 'px' : currentStyle[k] + '%';
+    });
+  }
+
+  function applyLiveFilter(){
+    viewer.style.setProperty('--live-filter', filterCss(currentStyle));
+    if(currentIndex >= 0){
+      const item = images[currentIndex];
+      styleById[item.id] = { ...currentStyle };
+      const card = gallery.querySelector(`.card[data-id="${item.id}"] img`);
+      if(card) card.style.setProperty('--card-filter', filterCss(currentStyle));
+    }
+  }
+
+  Object.keys(sliders).forEach(k => {
+    sliders[k].addEventListener('input', () => {
+      currentStyle[k] = Number(sliders[k].value);
+      valLabels[k].textContent = (k === 'blur') ? currentStyle[k] + 'px' : currentStyle[k] + '%';
+      applyLiveFilter();
+    });
+  });
+
+  const presets = {
+    none:   { bright:100, contrast:100, sat:100, gray:0, sepia:0, blur:0 },
+    bw:     { bright:105, contrast:115, sat:0,   gray:100, sepia:0, blur:0 },
+    vintage:{ bright:105, contrast:90,  sat:80,  gray:10,  sepia:35, blur:0 },
+    cool:   { bright:100, contrast:105, sat:110, gray:0,   sepia:0,  blur:0 },
+    warm:   { bright:105, contrast:100, sat:120, gray:0,   sepia:20, blur:0 },
+    vivid:  { bright:108, contrast:125, sat:150, gray:0,   sepia:0,  blur:0 },
+  };
+  document.querySelectorAll('.preset-row button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentStyle = { ...presets[btn.dataset.preset] };
+      syncSlidersFromStyle();
+      applyLiveFilter();
+    });
+  });
+
+  btnResetStyle.addEventListener('click', () => {
+    currentStyle = { ...defaultStyle };
+    syncSlidersFromStyle();
+    applyLiveFilter();
+  });
+
+  const maxWidthInput = document.getElementById('s-maxwidth');
+  const allMaxWidthInput = document.getElementById('all-maxwidth');
+
+  function getMaxWidth(){
+    const v = parseInt(maxWidthInput.value, 10);
+    return (Number.isFinite(v) && v > 0) ? v : null;
+  }
+
+  function getAllMaxWidth(){
+    const v = parseInt(allMaxWidthInput.value, 10);
+    return (Number.isFinite(v) && v > 0) ? v : null;
+  }
+
+  // ---- JPG Export (applies current style via canvas) ----
+  function exportImageAsJpg(item, style, filenameOverride, maxWidth){
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.naturalWidth;
+        let h = img.naturalHeight;
+        if(maxWidth && w > maxWidth){
+          const ratio = maxWidth / w;
+          w = maxWidth;
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.filter = filterCss(style);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          const base = (filenameOverride || item.name).replace(/\.[^.]+$/, '');
+          a.href = url;
+          a.download = base + '.jpg';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 4000);
+          resolve();
+        }, 'image/jpeg', 0.92);
+      };
+      img.src = item.src;
+    });
+  }
+
+  btnSaveJpg.addEventListener('click', () => {
+    if(currentIndex < 0) return;
+    exportImageAsJpg(images[currentIndex], currentStyle, null, getMaxWidth());
+  });
+
+  btnDownloadAll.addEventListener('click', async () => {
+    if(images.length === 0) return;
+    btnDownloadAll.disabled = true;
+    const original = btnDownloadAll.textContent;
+    const maxWidth = getAllMaxWidth();
+    for(let i = 0; i < images.length; i++){
+      btnDownloadAll.textContent = `Speichere ${i+1}/${images.length}…`;
+      const item = images[i];
+      await exportImageAsJpg(item, styleById[item.id] || defaultStyle, null, maxWidth);
+      await new Promise(r => setTimeout(r, 250));
+    }
+    btnDownloadAll.textContent = original;
+    btnDownloadAll.disabled = false;
+  });
+
+  updateButtons();
+})();
+</script>
+</body>
+</html>
